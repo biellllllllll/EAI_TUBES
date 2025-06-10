@@ -1,36 +1,31 @@
-# version: '3'
+# version: '4'
 
 networks:
     iae_shared_network:
         external: true
 
 services:
-    enrollment_nginx_proxy:
-        image: jwilder/nginx-proxy
-        container_name: enrollment_nginx_proxy
-        ports:
-            - "8088:80"
-        volumes:
-            - /var/run/docker.sock:/tmp/docker.sock:ro
-        networks:
-            - iae_shared_network
+    # Proxy tidak diperlukan di sini. Gunakan satu proxy utama yang sudah berjalan
+    # di docker-compose lain untuk menangani semua VIRTUAL_HOST.
 
+    # Web server (Nginx/Apache) untuk layanan Enrollment
     enrollment_web:
         build:
             context: ./
             dockerfile: docker/dev/web.docker
-        container_name: enrollment_nginx
-        # ports:
-        #     - "8084:80"
+        container_name: enrollment_web_server # Nama lebih deskriptif
         volumes:
             - ./:/var/www
         depends_on:
             - enrollment_app
         environment:
             - VIRTUAL_HOST=api.enrollment.test
+        expose:
+            - "80" # WAJIB agar ditemukan oleh proxy utama
         networks:
             - iae_shared_network
 
+    # Aplikasi (PHP-FPM) untuk layanan Enrollment
     enrollment_app:
         build:
             context: ./
@@ -42,11 +37,20 @@ services:
             - enrollment_db
             - enrollment_cache
         environment:
+            # Koneksi ke Redis
             - REDIS_PORT=6379
             - REDIS_HOST=enrollment_cache
+            # Koneksi ke Database Enrollment
+            - DB_CONNECTION=mysql
+            - DB_HOST=enrollment_db
+            - DB_PORT=3306
+            - DB_DATABASE=db_enroll # Sesuai dengan yang Anda berikan
+            - DB_USERNAME=root
+            - DB_PASSWORD=123
         networks:
             - iae_shared_network
 
+    # Database untuk layanan Enrollment
     enrollment_db:
         image: mysql:8.2
         container_name: enrollment_db
@@ -54,20 +58,24 @@ services:
             - MYSQL_ROOT_PASSWORD=123
             - MYSQL_DATABASE=db_enroll
         ports:
-            - "33066:3306"
+            # Port diubah menjadi berikutnya agar tidak konflik
+            - "33072:3306" 
         volumes:
             - enrollment_data:/var/lib/mysql
         networks:
             - iae_shared_network
 
+    # Cache untuk layanan Enrollment
     enrollment_cache:
         image: redis:latest
         container_name: enrollment_cache
         ports:
-            - "63796:6379"
+            # Port diubah menjadi berikutnya agar tidak konflik
+            - "63802:6379"
         networks:
             - iae_shared_network
 
+    # PhpMyAdmin untuk mengelola database Enrollment
     enrollment_phpmyadmin:
         image: phpmyadmin/phpmyadmin
         container_name: enrollment_phpmyadmin
@@ -78,8 +86,11 @@ services:
             - PMA_USER=root
             - PMA_PASSWORD=123
             - VIRTUAL_HOST=pma.enrollment.test
+        expose:
+            - "80" # WAJIB agar ditemukan oleh proxy utama
         networks:
             - iae_shared_network
 
 volumes:
     enrollment_data:
+
