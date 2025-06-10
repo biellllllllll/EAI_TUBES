@@ -1,0 +1,85 @@
+# version: '3'
+
+networks:
+    iae_shared_network:
+        external: true
+
+services:
+    pengembalian_nginx_proxy:
+        image: jwilder/nginx-proxy
+        container_name: pengembalian_nginx_proxy
+        ports:
+            - "8085:80"
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock:ro
+        networks:
+            - iae_shared_network
+
+    pengembalian_web:
+        build:
+            context: ./
+            dockerfile: docker/dev/web.docker
+        container_name: pengembalian_nginx
+        # ports:
+        #     - "8083:80"
+        volumes:
+            - ./:/var/www
+        depends_on:
+            - pengembalian_app
+        environment:
+            - VIRTUAL_HOST=api.pengembalian.test
+        networks:
+            - iae_shared_network
+
+    pengembalian_app:
+        build:
+            context: ./
+            dockerfile: docker/dev/app.docker
+        container_name: pengembalian_app
+        volumes:
+            - ./:/var/www
+        depends_on:
+            - pengembalian_db
+            - pengembalian_cache
+        environment:
+            - REDIS_PORT=6379
+            - REDIS_HOST=pengembalian_cache
+        networks:
+            - iae_shared_network
+
+    pengembalian_db:
+        image: mysql:8.2
+        container_name: pengembalian_db
+        environment:
+            - MYSQL_ROOT_PASSWORD=123
+            - MYSQL_DATABASE=pengembalian_service
+        ports:
+            - "33068:3306"
+        volumes:
+            - pengembalian_data:/var/lib/mysql
+        networks:
+            - iae_shared_network
+
+    pengembalian_cache:
+        image: redis:latest
+        container_name: pengembalian_cache
+        ports:
+            - "63796:6379"
+        networks:
+            - iae_shared_network
+
+    pengembalian_phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: pengembalian_phpmyadmin
+        depends_on:
+            - pengembalian_db
+        environment:
+            - PMA_HOST=pengembalian_db
+            - PMA_USER=root
+            - PMA_PASSWORD=123
+            - VIRTUAL_HOST=pma.pengembalian.test
+        networks:
+            - iae_shared_network
+
+volumes:
+    pengembalian_data:

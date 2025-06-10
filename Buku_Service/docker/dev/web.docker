@@ -1,0 +1,20 @@
+# docker/dev/web.docker
+FROM nginx:stable-alpine
+
+# Hapus konfigurasi default Nginx
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Salin konfigurasi Nginx kustom Anda
+COPY ./docker/dev/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Salin kode aplikasi Laravel Anda
+COPY . /var/www
+
+# Ubah owner file untuk Nginx
+RUN chown -R nginx:nginx /var/www
+
+# Expose port
+EXPOSE 80
+
+# Command untuk menjalankan Nginx
+CMD ["nginx", "-g", "daemon off;"]

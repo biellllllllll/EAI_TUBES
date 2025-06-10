@@ -1,0 +1,26 @@
+FROM php:8.2-fpm
+
+RUN apt-get update && apt-get install -y libmcrypt-dev libzip-dev default-mysql-client libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
+    && docker-php-ext-install pdo_mysql zip bcmath calendar opcache \
+    && docker-php-ext-install -j$(nproc) iconv \
+    && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
+    && docker-php-ext-install -j$(nproc) gd
+
+
+## Install Xdebug
+# Add xdebug
+# RUN apt-get install --no-cache --virtual .build-deps $PHPIZE_DEPS
+# RUN apt-get update linux-headers
+RUN pecl install xdebug-3.2.2
+RUN docker-php-ext-enable xdebug
+# RUN apt-get del -f .build-deps
+
+# Configure Xdebug
+RUN echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.mode=debug" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.log=/var/www/html/xdebug/xdebug.log" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.discover_client_host=1" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.client_port=9000" >> /usr/local/etc/php/conf.d/xdebug.ini
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer
+WORKDIR /var/www
