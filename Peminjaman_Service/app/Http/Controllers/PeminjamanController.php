@@ -151,7 +151,7 @@ class PeminjamanController extends Controller
         // Validasi id_pengunjung dari User Service (jika diupdate)
         if ($request->has('id_pengunjung')) {
             try {
-                $userResponse = Http::get(env('URL_USER_SERVICE_API') . "/api/v1/pengunjung/{$validated['id_pengunjung']}");
+                $userResponse = Http::get(env('URL_USER_SERVICE_API') . "/api/pengunjung/{$validated['id_pengunjung']}");
                 if ($userResponse->failed() || !$userResponse->json()) {
                     return response()->json([
                         'message' => "User dengan ID {$validated['id_pengunjung']} tidak ditemukan"
@@ -168,7 +168,7 @@ class PeminjamanController extends Controller
         // Validasi id_buku dari Buku Service (jika diupdate)
         if ($request->has('id_buku')) {
             try {
-                $bukuResponse = Http::get(env('URL_BUKU_SERVICE_API') . "/api/v1/buku/{$validated['id_buku']}");
+                $bukuResponse = Http::get(env('URL_BUKU_SERVICE_API') . "/api/buku/{$validated['id_buku']}");
                 if ($bukuResponse->failed() || !$bukuResponse->json()) {
                     return response()->json([
                         'message' => "Buku dengan ID {$validated['id_buku']} tidak ditemukan"
