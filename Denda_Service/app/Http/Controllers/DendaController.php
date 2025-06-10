@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\Validator;
 
 class DendaController extends Controller
 {
-    // Use an environment variable for the URL
-    private $pengembalianServiceUrl;
+    // Gunakan environment variable untuk URL dasar (base URL) layanan
+    private $pengembalianServiceBaseUrl;
 
     public function __construct()
     {
-        $this->pengembalianServiceUrl = env('PENGEMBALIAN_SERVICE_URL', 'http://localhost:8003/api/pengembalian');
+        // Ambil URL dasar dari .env, dengan nilai default jika tidak ditemukan
+        $this->pengembalianServiceBaseUrl = env('PENGEMBALIAN_SERVICE_URL', 'http://localhost:8003');
     }
 
     /**
@@ -44,7 +45,7 @@ class DendaController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'id_pengembalian' => 'required',
+                'id_pengembalian' => 'required|integer',
                 'jumlah_denda' => 'required|numeric|min:0',
                 'keterangan' => 'nullable|string'
             ]);
@@ -57,27 +58,35 @@ class DendaController extends Controller
                 ], 422);
             }
 
-            // Check pengembalian status from pengembalian service
+            // Cek status pengembalian dari layanan pengembalian
             try {
-                $pengembalianResponse = Http::get($this->pengembalianServiceUrl . '/' . $request->id_pengembalian);
+                $fullUrl = $this->pengembalianServiceBaseUrl . '/api/pengembalian/' . $request->id_pengembalian;
+                $pengembalianResponse = Http::get($fullUrl);
 
-                if (!$pengembalianResponse->successful()) {
+                if ($pengembalianResponse->failed()) {
+                    if ($pengembalianResponse->status() == 404) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Data pengembalian dengan ID ' . $request->id_pengembalian . ' tidak ditemukan di layanan pengembalian.'
+                        ], 404);
+                    }
                     return response()->json([
                         'status' => 'error',
-                        'message' => 'Data pengembalian tidak ditemukan'
-                    ], 404);
+                        'message' => 'Layanan pengembalian sedang tidak tersedia atau mengalami masalah.'
+                    ], 503);
                 }
-            } catch (\Exception $e) {
+
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Gagal terhubung ke layanan pengembalian'
+                    'message' => 'Gagal terhubung ke layanan pengembalian.'
                 ], 500);
             }
 
+            // Buat denda tanpa status dan tanggal pembayaran
             $denda = Denda::create([
                 'id_pengembalian' => $request->id_pengembalian,
                 'jumlah_denda' => $request->jumlah_denda,
-                'status_pembayaran' => 'belum_bayar',
                 'keterangan' => $request->keterangan
             ]);
 
@@ -86,6 +95,7 @@ class DendaController extends Controller
                 'message' => 'Denda berhasil dibuat',
                 'data' => $denda
             ], 201);
+
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -138,7 +148,7 @@ class DendaController extends Controller
             }
 
             $validator = Validator::make($request->all(), [
-                'jumlah_denda' => 'numeric|min:0',
+                'jumlah_denda' => 'sometimes|required|numeric|min:0',
                 'keterangan' => 'nullable|string'
             ]);
 
@@ -194,63 +204,5 @@ class DendaController extends Controller
         }
     }
 
-    /**
-     * Update the payment status of the specified denda record.
-     */
-    public function updateStatus(Request $request, string $id)
-    {
-        try {
-            $denda = Denda::find($id);
-
-            if (!$denda) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Denda tidak ditemukan'
-                ], 404);
-            }
-
-            $validator = Validator::make($request->all(), [
-                'status_pembayaran' => 'required|string|in:belum_bayar,sudah_bayar',
-                'tanggal_pembayaran' => 'nullable|date',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Validasi gagal',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $updateData = [
-                'status_pembayaran' => $request->status_pembayaran,
-            ];
-
-            // Only update tanggal_pembayaran if it's provided in the request
-            if ($request->has('tanggal_pembayaran')) {
-                $updateData['tanggal_pembayaran'] = $request->tanggal_pembayaran;
-            } else {
-                // If status is 'sudah_bayar' but no date provided, set to now()
-                if ($request->status_pembayaran === 'sudah_bayar' && !$denda->tanggal_pembayaran) {
-                    $updateData['tanggal_pembayaran'] = now();
-                } else if ($request->status_pembayaran === 'belum_bayar') {
-                    // If status is 'belum_bayar', clear the tanggal_pembayaran
-                    $updateData['tanggal_pembayaran'] = null;
-                }
-            }
-
-            $denda->update($updateData);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Status pembayaran denda berhasil diperbarui',
-                'data' => $denda
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Gagal memperbarui status denda: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+    // Metode updateStatus() telah dihapus seluruhnya.
 }

@@ -12,8 +12,6 @@ return new class extends Migration
             $table->id('id_denda');
             $table->unsignedBigInteger('id_pengembalian');
             $table->decimal('jumlah_denda', 10, 2);
-            $table->enum('status_pembayaran', ['belum_bayar', 'sudah_bayar'])->default('belum_bayar');
-            $table->timestamp('tanggal_pembayaran')->nullable();
             $table->text('keterangan')->nullable();
             $table->timestamps();
 
@@ -26,4 +24,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('denda');
     }
-}; 
+};
