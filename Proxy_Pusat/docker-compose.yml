@@ -5,15 +5,31 @@ networks:
         external: true
 
 services:
-    # Proxy tidak diperlukan di sini. Gunakan satu proxy utama yang sudah berjalan
-    # di docker-compose lain untuk menangani semua VIRTUAL_HOST.
+    # ====================================================================
+    # PROXY PUSAT (API GATEWAY) - HANYA ADA DI FILE INI
+    # ====================================================================
+    api_gateway:
+        image: jwilder/nginx-proxy
+        container_name: api_gateway_proxy # Nama generik untuk proxy utama
+        ports:
+            - "80:80"   # Port utama untuk semua traffic HTTP
+            - "443:443" # Port utama untuk semua traffic HTTPS
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock:ro
+        restart: always
+        networks:
+            - iae_shared_network
+
+    # ====================================================================
+    # LAYANAN SPESIFIK UNTUK ENROLLMENT
+    # ====================================================================
 
     # Web server (Nginx/Apache) untuk layanan Enrollment
     enrollment_web:
         build:
             context: ./
             dockerfile: docker/dev/web.docker
-        container_name: enrollment_web_server # Nama lebih deskriptif
+        container_name: enrollment_web_server
         volumes:
             - ./:/var/www
         depends_on:
@@ -37,16 +53,15 @@ services:
             - enrollment_db
             - enrollment_cache
         environment:
-            # Koneksi ke Redis
-            - REDIS_PORT=6379
-            - REDIS_HOST=enrollment_cache
-            # Koneksi ke Database Enrollment
+            # Variabel koneksi lengkap untuk Laravel
             - DB_CONNECTION=mysql
             - DB_HOST=enrollment_db
             - DB_PORT=3306
-            - DB_DATABASE=db_enroll # Sesuai dengan yang Anda berikan
+            - DB_DATABASE=db_enroll
             - DB_USERNAME=root
             - DB_PASSWORD=123
+            - REDIS_HOST=enrollment_cache
+            - REDIS_PORT=6379
         networks:
             - iae_shared_network
 
@@ -58,8 +73,7 @@ services:
             - MYSQL_ROOT_PASSWORD=123
             - MYSQL_DATABASE=db_enroll
         ports:
-            # Port diubah menjadi berikutnya agar tidak konflik
-            - "33072:3306" 
+            - "33072:3306" # Port unik untuk layanan ini
         volumes:
             - enrollment_data:/var/lib/mysql
         networks:
@@ -70,8 +84,7 @@ services:
         image: redis:latest
         container_name: enrollment_cache
         ports:
-            # Port diubah menjadi berikutnya agar tidak konflik
-            - "63802:6379"
+            - "63802:6379" # Port unik untuk layanan ini
         networks:
             - iae_shared_network
 
@@ -93,4 +106,3 @@ services:
 
 volumes:
     enrollment_data:
-
