@@ -1,36 +1,41 @@
-# version: '3'
+# version: '4' # Versi sudah tidak wajib untuk rilis Docker Compose modern, tapi tidak masalah jika ada.
 
 networks:
     iae_shared_network:
         external: true
 
 services:
+    # Proxy yang akan menjadi pintu masuk utama untuk semua request HTTP
     buku_nginx_proxy:
         image: jwilder/nginx-proxy
         container_name: buku_nginx_proxy
         ports:
-            - "8080:80"
+            - "80:80"      # Gunakan 80:80 untuk akses tanpa port (http://api.buku.test)
+            - "443:443"    # Opsional, jika Anda berencana menggunakan SSL
         volumes:
             - /var/run/docker.sock:/tmp/docker.sock:ro
+        # restart: always # Sebaiknya tambahkan ini agar proxy selalu berjalan
         networks:
             - iae_shared_network
 
+    # Web server (Nginx/Apache) yang melayani request untuk aplikasi PHP
     buku_web:
         build:
             context: ./
             dockerfile: docker/dev/web.docker
-        container_name: buku_nginx
-        # ports:
-        #     - "8080:80"
+        container_name: buku_web_server # Nama lebih deskriptif
         volumes:
             - ./:/var/www
         depends_on:
             - buku_app
         environment:
             - VIRTUAL_HOST=api.buku.test
+        expose:
+            - "80" # Expose port internal agar nginx-proxy dapat meneruskan traffic
         networks:
             - iae_shared_network
 
+    # Aplikasi (PHP-FPM)
     buku_app:
         build:
             context: ./
@@ -44,9 +49,17 @@ services:
         environment:
             - REDIS_PORT=6379
             - REDIS_HOST=buku_cache
+            # Variabel lingkungan untuk koneksi database biasanya juga ditaruh di sini
+            - DB_CONNECTION=mysql
+            - DB_HOST=buku_db
+            - DB_PORT=3306
+            - DB_DATABASE=buku_service
+            - DB_USERNAME=root # Sebaiknya buat user khusus, bukan root
+            - DB_PASSWORD=123
         networks:
             - iae_shared_network
 
+    # Database
     buku_db:
         image: mysql:8.2
         container_name: buku_db
@@ -54,20 +67,22 @@ services:
             - MYSQL_ROOT_PASSWORD=123
             - MYSQL_DATABASE=buku_service
         ports:
-            - "33067:3306"
+            - "33067:3306" # Untuk akses langsung ke DB dari host (misal via DBeaver/TablePlus)
         volumes:
             - buku_data:/var/lib/mysql
         networks:
             - iae_shared_network
 
+    # Cache
     buku_cache:
         image: redis:latest
         container_name: buku_cache
         ports:
-            - "63797:6379"
+            - "63797:6379" # Untuk akses langsung ke Redis dari host
         networks:
             - iae_shared_network
 
+    # PhpMyAdmin untuk mengelola database
     buku_phpmyadmin:
         image: phpmyadmin/phpmyadmin
         container_name: buku_phpmyadmin
@@ -77,7 +92,9 @@ services:
             - PMA_HOST=buku_db
             - PMA_USER=root
             - PMA_PASSWORD=123
-            - VIRTUAL_HOST=pma.buku.test
+            - VIRTUAL_HOST=pma.buku.test # Akan diakses melalui http://pma.buku.test
+        expose:
+            - "80" # PhpMyAdmin berjalan di port 80, expose agar ditemukan proxy
         networks:
             - iae_shared_network
 
