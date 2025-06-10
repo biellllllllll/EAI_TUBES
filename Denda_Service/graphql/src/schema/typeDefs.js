@@ -1,13 +1,13 @@
 const { gql } = require('apollo-server-express');
 
 const typeDefs = gql`
+    # Menghapus status_pembayaran dan tanggal_pembayaran
+    # agar sesuai dengan model data yang sudah disederhanakan.
     type Denda {
         id: ID!
         id_pengembalian: Int!
         jumlah_denda: Float!
-        status_pembayaran: String!
         keterangan: String
-        tanggal_pembayaran: String
     }
 
     type Query {
@@ -16,6 +16,7 @@ const typeDefs = gql`
     }
 
     type Mutation {
+        # createDenda dan updateDenda sudah sesuai dengan perubahan sebelumnya.
         createDenda(
             id_pengembalian: Int!
             jumlah_denda: Float!
@@ -30,12 +31,9 @@ const typeDefs = gql`
 
         deleteDenda(id: ID!): Boolean!
 
-        updateStatusPembayaran(
-            id: ID!
-            status_pembayaran: String!
-            tanggal_pembayaran: String
-        ): Denda
+        # Mutasi 'updateStatusPembayaran' dihapus seluruhnya karena
+        # fiturnya sudah tidak ada lagi di controller dan resolver.
     }
 `;
 
-module.exports = typeDefs; 
+module.exports = typeDefs;

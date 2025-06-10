@@ -1,42 +1,41 @@
-// Mock data untuk denda
+// Mock data untuk denda, disederhanakan tanpa status & tanggal pembayaran
 let dendaData = [
     {
         id: 1,
         id_pengembalian: 1,
         jumlah_denda: 50000,
-        status_pembayaran: 'belum_bayar',
-        keterangan: 'Keterlambatan pengembalian buku',
-        tanggal_pembayaran: null
+        keterangan: 'Terlambat 2 hari'
+        // Menghapus field status_pembayaran dan tanggal_pembayaran
     }
 ];
 
-// Fungsi untuk mendapatkan semua denda
+// Fungsi untuk mendapatkan semua denda (tidak berubah)
 const getAllDenda = () => {
     return dendaData;
 };
 
-// Fungsi untuk mendapatkan denda berdasarkan ID
+// Fungsi untuk mendapatkan denda berdasarkan ID (tidak berubah)
 const getDendaById = (id) => {
     return dendaData.find(denda => denda.id === parseInt(id));
 };
 
-// Fungsi untuk menambahkan denda baru
+// Fungsi untuk menambahkan denda baru (disederhanakan)
 const createDenda = (denda) => {
     const newDenda = {
-        id: dendaData.length + 1,
-        status_pembayaran: 'belum_bayar',
-        tanggal_pembayaran: null,
+        // Menggunakan cara yang lebih aman untuk generate ID
+        id: dendaData.length > 0 ? Math.max(...dendaData.map(d => d.id)) + 1 : 1,
+        // Tidak ada lagi penambahan status_pembayaran atau tanggal_pembayaran
         ...denda
     };
     dendaData.push(newDenda);
     return newDenda;
 };
 
-// Fungsi untuk memperbarui denda
+// Fungsi untuk memperbarui denda (tidak berubah, sudah sesuai)
 const updateDenda = (id, denda) => {
     const index = dendaData.findIndex(d => d.id === parseInt(id));
     if (index === -1) return null;
-    
+
     dendaData[index] = {
         ...dendaData[index],
         ...denda
@@ -44,44 +43,23 @@ const updateDenda = (id, denda) => {
     return dendaData[index];
 };
 
-// Fungsi untuk menghapus denda
+// Fungsi untuk menghapus denda (tidak berubah, sudah sesuai)
 const deleteDenda = (id) => {
     const index = dendaData.findIndex(d => d.id === parseInt(id));
     if (index === -1) return false;
-    
+
     dendaData.splice(index, 1);
     return true;
 };
 
-// Fungsi untuk memperbarui status pembayaran
-const updateStatusPembayaran = (id, statusData) => {
-    const index = dendaData.findIndex(d => d.id === parseInt(id));
-    if (index === -1) return null;
+// Fungsi 'updateStatusPembayaran' dihapus seluruhnya karena tidak lagi relevan
 
-    const updateData = {
-        status_pembayaran: statusData.status_pembayaran
-    };
-
-    if (statusData.tanggal_pembayaran) {
-        updateData.tanggal_pembayaran = statusData.tanggal_pembayaran;
-    } else if (statusData.status_pembayaran === 'sudah_bayar' && !dendaData[index].tanggal_pembayaran) {
-        updateData.tanggal_pembayaran = new Date().toISOString();
-    } else if (statusData.status_pembayaran === 'belum_bayar') {
-        updateData.tanggal_pembayaran = null;
-    }
-
-    dendaData[index] = {
-        ...dendaData[index],
-        ...updateData
-    };
-    return dendaData[index];
-};
-
+// Ekspor fungsi-fungsi yang masih digunakan
 module.exports = {
     getAllDenda,
     getDendaById,
     createDenda,
     updateDenda,
-    deleteDenda,
-    updateStatusPembayaran
-}; 
+    deleteDenda
+    // Menghapus 'updateStatusPembayaran' dari exports
+};
