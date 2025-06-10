@@ -1,85 +1,95 @@
-# version: '3'
+# version: '4'
 
 networks:
     iae_shared_network:
         external: true
 
 services:
-    user_nginx_proxy:
-        image: jwilder/nginx-proxy
-        container_name: user_nginx_proxy
-        ports:
-            - "8080:80"
-        volumes:
-            - /var/run/docker.sock:/tmp/docker.sock:ro
-        networks:
-            - iae_shared_network
+    # Proxy tidak diperlukan di sini. Gunakan satu proxy utama yang sudah berjalan
+    # di docker-compose lain untuk menangani semua VIRTUAL_HOST.
 
-    user_web:
+    # Web server (Nginx/Apache) untuk layanan Peminjaman
+    peminjaman_web:
         build:
             context: ./
             dockerfile: docker/dev/web.docker
-        container_name: user_nginx
-        # ports:
-        #     - "8080:80"
+        container_name: peminjaman_web_server
         volumes:
             - ./:/var/www
         depends_on:
-            - user_app
+            - peminjaman_app
         environment:
-            - VIRTUAL_HOST=api.user.test
+            - VIRTUAL_HOST=api.peminjaman.test
+        expose:
+            - "80" # WAJIB agar ditemukan oleh proxy utama
         networks:
             - iae_shared_network
 
-    user_app:
+    # Aplikasi (PHP-FPM) untuk layanan Peminjaman
+    peminjaman_app:
         build:
             context: ./
             dockerfile: docker/dev/app.docker
-        container_name: user_app
+        container_name: peminjaman_app
         volumes:
             - ./:/var/www
         depends_on:
-            - user_db
-            - user_cache
+            - peminjaman_db
+            - peminjaman_cache
         environment:
+            # Koneksi ke Redis
             - REDIS_PORT=6379
-            - REDIS_HOST=user_cache
+            - REDIS_HOST=peminjaman_cache
+            # Koneksi ke Database Peminjaman
+            - DB_CONNECTION=mysql
+            - DB_HOST=peminjaman_db
+            - DB_PORT=3306
+            - DB_DATABASE=peminjaman_service
+            - DB_USERNAME=root
+            - DB_PASSWORD=123
         networks:
             - iae_shared_network
 
-    user_db:
+    # Database untuk layanan Peminjaman
+    peminjaman_db:
         image: mysql:8.2
-        container_name: user_db
+        container_name: peminjaman_db
         environment:
             - MYSQL_ROOT_PASSWORD=123
-            - MYSQL_DATABASE=user_service
+            - MYSQL_DATABASE=peminjaman_service
         ports:
-            - "33067:3306"
+            # Port diubah menjadi berikutnya agar tidak konflik
+            - "33070:3306" 
         volumes:
-            - user_data:/var/lib/mysql
+            - peminjaman_data:/var/lib/mysql
         networks:
             - iae_shared_network
 
-    user_cache:
+    # Cache untuk layanan Peminjaman
+    peminjaman_cache:
         image: redis:latest
-        container_name: user_cache
+        container_name: peminjaman_cache
         ports:
-            - "63797:6379"
+            # Port diubah menjadi berikutnya agar tidak konflik
+            - "63800:6379"
         networks:
             - iae_shared_network
 
-    user_phpmyadmin:
+    # PhpMyAdmin untuk mengelola database Peminjaman
+    peminjaman_phpmyadmin:
         image: phpmyadmin/phpmyadmin
-        container_name: user_phpmyadmin
+        container_name: peminjaman_phpmyadmin
         depends_on:
-            - user_db
+            - peminjaman_db
         environment:
-            - PMA_HOST=user_db
+            - PMA_HOST=peminjaman_db
             - PMA_USER=root
             - PMA_PASSWORD=123
-            - VIRTUAL_HOST=pma.user.test
+            - VIRTUAL_HOST=pma.peminjaman.test
+        expose:
+            - "80" # WAJIB agar ditemukan oleh proxy utama
         networks:
             - iae_shared_network
 
 volumes:
-    user_data:
+    peminjaman_data:
