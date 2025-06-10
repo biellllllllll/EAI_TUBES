@@ -3,8 +3,8 @@ const {
     getDendaById,
     createDenda,
     updateDenda,
-    deleteDenda,
-    updateStatusPembayaran
+    deleteDenda
+    // Menghapus 'updateStatusPembayaran' dari import karena sudah tidak digunakan
 } = require('../data/denda');
 
 const resolvers = {
@@ -14,6 +14,7 @@ const resolvers = {
     },
 
     Mutation: {
+        // createDenda sudah sesuai dengan controller
         createDenda: (_, { id_pengembalian, jumlah_denda, keterangan }) => {
             return createDenda({
                 id_pengembalian,
@@ -22,6 +23,7 @@ const resolvers = {
             });
         },
 
+        // updateDenda sudah sesuai dengan controller
         updateDenda: (_, { id, jumlah_denda, keterangan }) => {
             return updateDenda(id, {
                 jumlah_denda,
@@ -29,17 +31,14 @@ const resolvers = {
             });
         },
 
+        // deleteDenda sudah sesuai
         deleteDenda: (_, { id }) => {
             return deleteDenda(id);
         },
 
-        updateStatusPembayaran: (_, { id, status_pembayaran, tanggal_pembayaran }) => {
-            return updateStatusPembayaran(id, {
-                status_pembayaran,
-                tanggal_pembayaran
-            });
-        }
+        // Mutasi 'updateStatusPembayaran' dihapus seluruhnya karena
+        // logikanya sudah tidak ada di DendaController.
     }
 };
 
-module.exports = resolvers; 
+module.exports = resolvers;
