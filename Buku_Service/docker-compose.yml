@@ -1,12 +1,31 @@
-# version: '4'
+# version: '3.8' # Versi ini opsional dan bisa dihapus
 
 networks:
+    # Mendefinisikan bahwa kita akan menggunakan jaringan yang sudah ada di luar sana
     iae_shared_network:
         external: true
 
 services:
-    # TIDAK ADA PROXY DI SINI
-    # Layanan ini akan dideteksi secara otomatis oleh api_gateway_proxy
+    # ====================================================================
+    # PROXY PUSAT (API GATEWAY) - Dijalankan dari file ini
+    # ====================================================================
+    api_gateway:
+        image: jwilder/nginx-proxy
+        container_name: api_gateway_proxy # Nama generik untuk proxy utama
+        ports:
+            # Gunakan port 80 agar semua layanan bisa diakses tanpa mengetik port
+            - "80:80"
+            - "443:443"
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock:ro
+        restart: always
+        networks:
+            # Terhubung ke jaringan bersama
+            - iae_shared_network
+
+    # ====================================================================
+    # LAYANAN SPESIFIK UNTUK BUKU
+    # ====================================================================
 
     # Web server (Nginx/Apache) yang melayani request untuk aplikasi PHP
     buku_web:
@@ -19,10 +38,12 @@ services:
         depends_on:
             - buku_app
         environment:
+            # Proxy akan mendeteksi VIRTUAL_HOST ini
             - VIRTUAL_HOST=api.buku.test
         expose:
-            - "80" # WAJIB agar ditemukan oleh proxy utama
+            - "80" # WAJIB agar ditemukan oleh proxy
         networks:
+            # Terhubung ke jaringan bersama
             - iae_shared_network
 
     # Aplikasi (PHP-FPM)
@@ -46,6 +67,7 @@ services:
             - REDIS_HOST=buku_cache
             - REDIS_PORT=6379
         networks:
+            # Terhubung ke jaringan bersama
             - iae_shared_network
 
     # Database
@@ -60,6 +82,7 @@ services:
         volumes:
             - buku_data:/var/lib/mysql
         networks:
+            # Terhubung ke jaringan bersama
             - iae_shared_network
 
     # Cache
@@ -69,6 +92,7 @@ services:
         ports:
             - "63797:6379" # Port unik untuk layanan ini
         networks:
+            # Terhubung ke jaringan bersama
             - iae_shared_network
 
     # PhpMyAdmin untuk mengelola database
@@ -83,8 +107,9 @@ services:
             - PMA_PASSWORD=123
             - VIRTUAL_HOST=pma.buku.test
         expose:
-            - "80" # WAJIB agar ditemukan oleh proxy utama
+            - "80" # WAJIB agar ditemukan oleh proxy
         networks:
+            # Terhubung ke jaringan bersama
             - iae_shared_network
 
 volumes:
