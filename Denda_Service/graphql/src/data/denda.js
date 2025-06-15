@@ -1,65 +1,59 @@
-// Mock data untuk denda, disederhanakan tanpa status & tanggal pembayaran
-let dendaData = [
-    {
-        id: 1,
-        id_pengembalian: 1,
-        jumlah_denda: 50000,
-        keterangan: 'Terlambat 2 hari'
-        // Menghapus field status_pembayaran dan tanggal_pembayaran
+// File: Denda_Service/graphql/src/data/denda.js (Versi Final)
+const pool = require('../db/mysql');
+const axios = require('axios');
+
+const PENGEMBALIAN_SERVICE_URL = 'http://localhost:4003/graphql';
+
+const dendaService = {
+  getAll: async () => {
+    const [rows] = await pool.query('SELECT id_denda, id_pengembalian, jumlah_denda, keterangan FROM denda');
+    // Mapping dari nama kolom DB ke nama field GraphQL
+    return rows.map(row => ({
+      id: row.id_denda,
+      id_pengembalian: row.id_pengembalian,
+      jumlah_denda: row.jumlah_denda,
+      keterangan: row.keterangan
+    }));
+  },
+
+  getById: async (id) => {
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    const [rows] = await pool.query('SELECT id_denda, id_pengembalian, jumlah_denda, keterangan FROM denda WHERE id_denda = ?', [numericId]);
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    // Mapping dari nama kolom DB ke nama field GraphQL
+    return {
+      id: row.id_denda,
+      id_pengembalian: row.id_pengembalian,
+      jumlah_denda: row.jumlah_denda,
+      keterangan: row.keterangan
+    };
+  },
+
+  create: async ({ id_pengembalian, jumlah_denda, keterangan }) => {
+    try {
+      const queryCheck = { query: `query { getPengembalianById(id: "${id_pengembalian}") { id } }` };
+      const response = await axios.post(PENGEMBALIAN_SERVICE_URL, queryCheck);
+      if (!response.data.data.getPengembalianById) {
+        throw new Error('Data Pengembalian dengan ID tersebut tidak ditemukan.');
+      }
+
+      // Menyesuaikan nama kolom dengan tabel Anda: id_denda (auto), id_pengembalian, jumlah_denda, keterangan
+      const [result] = await pool.query(
+        'INSERT INTO denda (id_pengembalian, jumlah_denda, keterangan) VALUES (?, ?, ?)',
+        [id_pengembalian, jumlah_denda, keterangan]
+      );
+      const newId = result.insertId;
+
+      return { id: newId, id_pengembalian, jumlah_denda, keterangan };
+    } catch (error) {
+      if (error.isAxiosError) {
+        throw new Error('Terjadi masalah saat validasi data, Pengembalian_Service mungkin tidak berjalan.');
+      }
+      throw error;
     }
-];
-
-// Fungsi untuk mendapatkan semua denda (tidak berubah)
-const getAllDenda = () => {
-    return dendaData;
+  }
 };
 
-// Fungsi untuk mendapatkan denda berdasarkan ID (tidak berubah)
-const getDendaById = (id) => {
-    return dendaData.find(denda => denda.id === parseInt(id));
-};
-
-// Fungsi untuk menambahkan denda baru (disederhanakan)
-const createDenda = (denda) => {
-    const newDenda = {
-        // Menggunakan cara yang lebih aman untuk generate ID
-        id: dendaData.length > 0 ? Math.max(...dendaData.map(d => d.id)) + 1 : 1,
-        // Tidak ada lagi penambahan status_pembayaran atau tanggal_pembayaran
-        ...denda
-    };
-    dendaData.push(newDenda);
-    return newDenda;
-};
-
-// Fungsi untuk memperbarui denda (tidak berubah, sudah sesuai)
-const updateDenda = (id, denda) => {
-    const index = dendaData.findIndex(d => d.id === parseInt(id));
-    if (index === -1) return null;
-
-    dendaData[index] = {
-        ...dendaData[index],
-        ...denda
-    };
-    return dendaData[index];
-};
-
-// Fungsi untuk menghapus denda (tidak berubah, sudah sesuai)
-const deleteDenda = (id) => {
-    const index = dendaData.findIndex(d => d.id === parseInt(id));
-    if (index === -1) return false;
-
-    dendaData.splice(index, 1);
-    return true;
-};
-
-// Fungsi 'updateStatusPembayaran' dihapus seluruhnya karena tidak lagi relevan
-
-// Ekspor fungsi-fungsi yang masih digunakan
-module.exports = {
-    getAllDenda,
-    getDendaById,
-    createDenda,
-    updateDenda,
-    deleteDenda
-    // Menghapus 'updateStatusPembayaran' dari exports
-};
+module.exports = dendaService;

@@ -1,7 +1,7 @@
 const { gql } = require('apollo-server-express');
 
 const typeDefs = gql`
-  type Buku {
+  type Buku @key(fields: "id") {
     id: ID!
     judul_buku: String!
     penulis_buku: String!

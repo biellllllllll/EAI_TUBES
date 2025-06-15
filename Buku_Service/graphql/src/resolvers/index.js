@@ -1,36 +1,46 @@
 const bukuService = require('../data/buku');
 
 const resolvers = {
+    Buku: {
+    __resolveReference(buku, { dataSources }) {
+      return bukuService.getBukuById(buku.id);
+    }
+  },
   Query: {
-    getAllBuku: () => {
-      return bukuService.getAllBuku();
+    // Tambahkan async dan await
+    getAllBuku: async () => {
+      return await bukuService.getAllBuku();
     },
-    getBukuById: (_, { id }) => {
-      return bukuService.getBukuById(id);
+    // Tambahkan async dan await
+    getBukuById: async (_, { id }) => {
+      return await bukuService.getBukuById(id);
     }
   },
   Mutation: {
-    createBuku: (_, { judul_buku, penulis_buku, penerbit_buku, tahun_terbit_buku }) => {
-      return bukuService.createBuku({
+    // Tambahkan async dan await
+    createBuku: async (_, { judul_buku, penulis_buku, penerbit_buku, tahun_terbit_buku }) => {
+      return await bukuService.createBuku({
         judul_buku,
         penulis_buku,
         penerbit_buku,
         tahun_terbit_buku
       });
     },
-    updateBuku: (_, { id, ...buku }) => {
-      const updatedBuku = bukuService.updateBuku(id, buku);
+    // Tambahkan async dan await
+    updateBuku: async (_, { id, ...buku }) => {
+      const updatedBuku = await bukuService.updateBuku(id, buku);
       if (!updatedBuku) {
         throw new Error('Buku tidak ditemukan');
       }
       return updatedBuku;
     },
-    deleteBuku: (_, { id }) => {
-      const deleted = bukuService.deleteBuku(id);
+    // Tambahkan async dan await
+    deleteBuku: async (_, { id }) => {
+      const deleted = await bukuService.deleteBuku(id);
       if (!deleted) {
         throw new Error('Buku tidak ditemukan');
       }
-      return true;
+      return true; // Tetap mengembalikan boolean
     }
   },
 };

@@ -1,4 +1,4 @@
-# ... (baris-baris sebelumnya)
+FROM php:8.2-fpm-alpine
 
 ## Install Xdebug
 # Add xdebug

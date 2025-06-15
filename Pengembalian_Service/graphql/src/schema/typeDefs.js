@@ -1,38 +1,30 @@
+// File: Pengembalian_Service/graphql/src/schema/typeDefs.js (Versi Final)
 const { gql } = require('apollo-server-express');
 
 const typeDefs = gql`
-    # Menambahkan field 'status' karena field ini sekarang menjadi
-    # bagian dari data pengembalian.
-    type Pengembalian {
-        id: ID!
-        peminjaman_id: Int!
-        tanggal_pengembalian: String!
-        status: String!
-    }
+  scalar Date
 
-    type Query {
-        getAllPengembalian: [Pengembalian!]!
-        getPengembalianById(id: ID!): Pengembalian
-    }
+  extend type Peminjaman @key(fields: "id") {
+    id: ID! @external
+  }
 
-    type Mutation {
-        # Input untuk create hanya butuh 'peminjaman_id'.
-        # 'tanggal_pengembalian' dan 'status' dihitung di server.
-        createPengembalian(
-            peminjaman_id: Int!
-        ): Pengembalian!
+  type Pengembalian @key(fields: "id") {
+    id: ID!
+    id_peminjaman: Int!
+    tanggal_pengembalian: Date!
+    status: String # Mengganti keterangan menjadi status
+    peminjaman: Peminjaman
+  }
 
-        # Input untuk update sekarang menyertakan 'status'.
-        # 'peminjaman_id' dihapus karena tidak seharusnya diubah.
-        updatePengembalian(
-            id: ID!
-            tanggal_pengembalian: String
-            status: String
-        ): Pengembalian
+  type Query {
+    getAllPengembalian: [Pengembalian]
+    getPengembalianById(id: ID!): Pengembalian
+  }
 
-        # Return type sudah benar (Boolean).
-        deletePengembalian(id: ID!): Boolean!
-    }
+  type Mutation {
+    # Mengganti argumen keterangan menjadi status
+    createPengembalian(id_peminjaman: Int!, tanggal_pengembalian: Date!, status: String): Pengembalian
+  }
 `;
 
 module.exports = typeDefs;

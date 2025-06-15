@@ -1,39 +1,28 @@
+// File: Denda_Service/graphql/src/schema/typeDefs.js (Versi Final)
 const { gql } = require('apollo-server-express');
 
 const typeDefs = gql`
-    # Menghapus status_pembayaran dan tanggal_pembayaran
-    # agar sesuai dengan model data yang sudah disederhanakan.
-    type Denda {
-        id: ID!
-        id_pengembalian: Int!
-        jumlah_denda: Float!
-        keterangan: String
-    }
+  extend type Pengembalian @key(fields: "id") {
+    id: ID! @external
+  }
 
-    type Query {
-        getAllDenda: [Denda!]!
-        getDendaById(id: ID!): Denda
-    }
+  type Denda @key(fields: "id") {
+    id: ID!
+    id_pengembalian: Int!
+    jumlah_denda: Int!
+    keterangan: String # Mengganti status_pembayaran menjadi keterangan
+    pengembalian: Pengembalian
+  }
 
-    type Mutation {
-        # createDenda dan updateDenda sudah sesuai dengan perubahan sebelumnya.
-        createDenda(
-            id_pengembalian: Int!
-            jumlah_denda: Float!
-            keterangan: String
-        ): Denda!
+  type Query {
+    getAllDenda: [Denda]
+    getDendaById(id: ID!): Denda
+  }
 
-        updateDenda(
-            id: ID!
-            jumlah_denda: Float
-            keterangan: String
-        ): Denda
-
-        deleteDenda(id: ID!): Boolean!
-
-        # Mutasi 'updateStatusPembayaran' dihapus seluruhnya karena
-        # fiturnya sudah tidak ada lagi di controller dan resolver.
-    }
+  type Mutation {
+    # Mengganti argumen agar sesuai dengan tabel
+    createDenda(id_pengembalian: Int!, jumlah_denda: Int!, keterangan: String): Denda
+  }
 `;
 
 module.exports = typeDefs;

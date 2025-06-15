@@ -1,121 +1,64 @@
-// --- Simulasi Data dari Peminjaman Service ---
-// Data ini kita gunakan untuk meniru hasil panggilan HTTP ke layanan Peminjaman
-// untuk mendapatkan tanggal jatuh tempo.
-const peminjamanServiceData = [
-    { id: 1, tanggal_pinjam: '2024-03-01T10:00:00Z', tanggal_kembali: '2024-03-08T10:00:00Z' }, // Akan Tepat Waktu
-    { id: 2, tanggal_pinjam: '2025-05-20T10:00:00Z', tanggal_kembali: '2025-05-27T10:00:00Z' }, // Akan Terlambat
-    { id: 3, tanggal_pinjam: '2025-06-01T10:00:00Z', tanggal_kembali: '2025-06-08T10:00:00Z' }, // Akan Tepat Waktu
-];
+// File: Pengembalian_Service/graphql/src/data/pengembalian.js (Versi Final & Lengkap)
 
-// Mock data untuk pengembalian, sekarang ditambahkan 'status'
-let pengembalianData = [
-    {
-        id: 1,
-        peminjaman_id: 1,
-        tanggal_pengembalian: '2024-03-08T10:00:00Z',
-        status: 'Tepat Waktu' // Menambahkan field status
-    }
-];
+const pool = require('../db/mysql');
+const axios = require('axios');
 
-// --- Fungsi Data Layer ---
+const PEMINJAMAN_SERVICE_URL = 'http://localhost:4002/graphql';
 
-// Fungsi untuk mendapatkan semua pengembalian (tidak berubah)
-const getAllPengembalian = () => {
-    return pengembalianData;
+// Fungsi helper untuk mapping, agar tidak duplikasi kode
+const mapRowToPengembalian = (row) => {
+    if (!row) return null;
+    return {
+        id: row.id,
+        id_peminjaman: row.peminjaman_id, // <--- MAPPING PENTING DARI DB KE GQL
+        tanggal_pengembalian: row.tanggal_pengembalian,
+        status: row.status
+    };
 };
 
-// Fungsi untuk mendapatkan pengembalian berdasarkan ID (tidak berubah)
-const getPengembalianById = (id) => {
-    return pengembalianData.find(pengembalian => pengembalian.id === parseInt(id));
-};
+const pengembalianService = {
+  getAll: async () => {
+    const [rows] = await pool.query('SELECT * FROM pengembalian');
+    // Gunakan helper mapping di sini
+    return rows.map(mapRowToPengembalian);
+  },
 
-/**
- * Fungsi untuk menambahkan pengembalian baru.
- * Logika disesuaikan agar meniru PengembalianController.
- */
-const createPengembalian = ({ peminjaman_id }) => {
-    // 1. Validasi: Cek apakah peminjaman sudah pernah dikembalikan
-    const existingPengembalian = pengembalianData.find(
-        p => p.peminjaman_id === peminjaman_id
-    );
-    if (existingPengembalian) {
+  getById: async (id) => {
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    const [rows] = await pool.query('SELECT * FROM pengembalian WHERE id = ?', [numericId]);
+    // Gunakan helper mapping di sini
+    return mapRowToPengembalian(rows[0]);
+  },
+
+  create: async ({ id_peminjaman, tanggal_pengembalian, status }) => {
+    try {
+      const [existingReturns] = await pool.query('SELECT id FROM pengembalian WHERE peminjaman_id = ?', [id_peminjaman]);
+      if (existingReturns.length > 0) {
         throw new Error('Peminjaman ini sudah pernah dikembalikan sebelumnya.');
+      }
+
+      const queryCheck = { query: `query { getPeminjamanById(id: "${id_peminjaman}") { id } }` };
+      const response = await axios.post(PEMINJAMAN_SERVICE_URL, queryCheck);
+      if (!response.data.data.getPeminjamanById) {
+        throw new Error('Peminjaman dengan ID tersebut tidak ditemukan.');
+      }
+
+      const [result] = await pool.query(
+        'INSERT INTO pengembalian (peminjaman_id, tanggal_pengembalian, status) VALUES (?, ?, ?)',
+        [id_peminjaman, tanggal_pengembalian, status]
+      );
+      const id = result.insertId;
+
+      // Kembalikan data yang sudah di-mapping agar konsisten
+      return { id, id_peminjaman, tanggal_pengembalian, status };
+    } catch (error) {
+      if (error.isAxiosError) {
+        throw new Error('Terjadi masalah saat validasi data, Peminjaman_Service mungkin tidak berjalan.');
+      }
+      throw error;
     }
-
-    // 2. Simulasi Panggilan Service: Ambil data peminjaman
-    const peminjaman = peminjamanServiceData.find(p => p.id === peminjaman_id);
-    if (!peminjaman) {
-        throw new Error(`Data Peminjaman dengan ID ${peminjaman_id} tidak ditemukan.`);
-    }
-
-    // 3. Logika Bisnis: Tentukan tanggal dan status
-    const tanggalPengembalianAktual = new Date(); // Menggunakan tanggal & waktu saat ini
-    const tanggalJatuhTempo = new Date(peminjaman.tanggal_kembali);
-
-    // Bandingkan tanggal tanpa memperhitungkan waktu
-    tanggalPengembalianAktual.setHours(0, 0, 0, 0);
-    tanggalJatuhTempo.setHours(0, 0, 0, 0);
-
-    const status = tanggalPengembalianAktual > tanggalJatuhTempo ? 'Terlambat' : 'Tepat Waktu';
-
-    // 4. Buat objek pengembalian baru
-    const newPengembalian = {
-        id: pengembalianData.length > 0 ? Math.max(...pengembalianData.map(p => p.id)) + 1 : 1,
-        peminjaman_id,
-        tanggal_pengembalian: tanggalPengembalianAktual.toISOString(),
-        status
-    };
-
-    pengembalianData.push(newPengembalian);
-    return newPengembalian;
+  }
 };
 
-
-/**
- * Fungsi untuk memperbarui pengembalian.
- * Disesuaikan untuk hanya menerima 'tanggal_pengembalian' dan 'status'.
- */
-const updatePengembalian = (id, { tanggal_pengembalian, status }) => {
-    const index = pengembalianData.findIndex(p => p.id === parseInt(id));
-    if (index === -1) return null; // Atau throw new Error('Pengembalian tidak ditemukan');
-
-    // Buat objek update hanya dengan field yang ada di input
-    const updateData = {};
-    if (tanggal_pengembalian !== undefined) {
-        updateData.tanggal_pengembalian = tanggal_pengembalian;
-    }
-    if (status !== undefined) {
-        // Validasi sederhana untuk status
-        if (['Tepat Waktu', 'Terlambat'].includes(status)) {
-            updateData.status = status;
-        } else {
-             throw new Error("Status harus 'Tepat Waktu' atau 'Terlambat'");
-        }
-    }
-
-    // Gabungkan data lama dengan data baru yang valid
-    pengembalianData[index] = {
-        ...pengembalianData[index],
-        ...updateData
-    };
-
-    return pengembalianData[index];
-};
-
-
-// Fungsi untuk menghapus pengembalian (tidak berubah)
-const deletePengembalian = (id) => {
-    const index = pengembalianData.findIndex(p => p.id === parseInt(id));
-    if (index === -1) return false;
-
-    pengembalianData.splice(index, 1);
-    return true; // Konfirmasi berhasil dihapus
-};
-
-module.exports = {
-    getAllPengembalian,
-    getPengembalianById,
-    createPengembalian,
-    updatePengembalian,
-    deletePengembalian
-};
+module.exports = pengembalianService;

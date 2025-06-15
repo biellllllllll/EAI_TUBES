@@ -1,52 +1,39 @@
-const {
-    getAllPengembalian,
-    getPengembalianById,
-    createPengembalian,
-    updatePengembalian,
-    deletePengembalian
-} = require('../data/pengembalian');
+// File: Pengembalian_Service/graphql/src/resolvers/index.js (Versi Final)
+const { GraphQLScalarType, Kind } = require('graphql');
+const pengembalianService = require('../data/pengembalian');
+
+const dateScalar = new GraphQLScalarType({
+  name: 'Date',
+  description: 'Date custom scalar type',
+  serialize: (value) => value instanceof Date ? value.toISOString() : null,
+  parseValue: (value) => typeof value === 'string' ? new Date(value) : null,
+  parseLiteral: (ast) => ast.kind === Kind.STRING ? new Date(ast.value) : null,
+});
 
 const resolvers = {
-    Query: {
-        // Tidak ada perubahan, query tetap sama
-        getAllPengembalian: () => getAllPengembalian(),
-        getPengembalianById: (_, { id }) => getPengembalianById(id)
+  Date: dateScalar,
+
+  Pengembalian: {
+    peminjaman(pengembalian) {
+      // Ini sudah benar, karena kita ingin mencari berdasarkan id_peminjaman dari DB
+      return { __typename: "Peminjaman", id: pengembalian.id_peminjaman };
     },
-
-    Mutation: {
-        /**
-         * Sesuai dengan controller, kita hanya butuh peminjaman_id.
-         * Tanggal pengembalian dan status akan di-handle oleh logika bisnis
-         * di dalam fungsi createPengembalian (yang seharusnya meniru logika controller).
-         */
-        createPengembalian: (_, { peminjaman_id }) => {
-            try {
-                // Hanya meneruskan peminjaman_id
-                return createPengembalian({ peminjaman_id });
-            } catch (error) {
-                // Melempar error agar bisa ditangkap oleh GraphQL
-                throw new Error(error.message);
-            }
-        },
-
-        /**
-         * Sesuai dengan controller, kita bisa mengupdate tanggal_pengembalian dan status.
-         * peminjaman_id tidak diubah.
-         */
-        updatePengembalian: (_, { id, tanggal_pengembalian, status }) => {
-            // Meneruskan field yang bisa diubah ke dalam satu objek
-            const input = {
-                tanggal_pengembalian,
-                status
-            };
-            return updatePengembalian(id, input);
-        },
-
-        // Tidak ada perubahan, delete tetap berdasarkan ID
-        deletePengembalian: (_, { id }) => {
-            return deletePengembalian(id);
-        }
+    // --- PERBAIKAN DI SINI ---
+    // Resolver ini harus membaca properti yang dikembalikan oleh service.
+    // Service kita mengembalikan objek dengan properti 'id_peminjaman'.
+    id_peminjaman(pengembalian) {
+      return pengembalian.id_peminjaman; // Sebelumnya: pengembalian.peminjaman_id
     }
+  },
+
+  Query: {
+    getAllPengembalian: async () => await pengembalianService.getAll(),
+    getPengembalianById: async (_, { id }) => await pengembalianService.getById(id),
+  },
+
+  Mutation: {
+    createPengembalian: async (_, args) => await pengembalianService.create(args),
+  }
 };
 
 module.exports = resolvers;

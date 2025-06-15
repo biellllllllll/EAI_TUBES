@@ -52,7 +52,7 @@ services:
             # Variabel lingkungan untuk koneksi database biasanya juga ditaruh di sini
             - DB_CONNECTION=mysql
             - DB_HOST=buku_db
-            - DB_PORT=3306
+            - DB_PORT=3308
             - DB_DATABASE=buku_service
             - DB_USERNAME=root # Sebaiknya buat user khusus, bukan root
             - DB_PASSWORD=123
@@ -67,7 +67,7 @@ services:
             - MYSQL_ROOT_PASSWORD=123
             - MYSQL_DATABASE=buku_service
         ports:
-            - "33067:3306" # Untuk akses langsung ke DB dari host (misal via DBeaver/TablePlus)
+            - "33067:3308" # Untuk akses langsung ke DB dari host (misal via DBeaver/TablePlus)
         volumes:
             - buku_data:/var/lib/mysql
         networks:

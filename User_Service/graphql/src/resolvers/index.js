@@ -1,31 +1,41 @@
 const pengunjungService = require('../data/pengunjung');
 
 const resolvers = {
+    Pengunjung: {
+    __resolveReference(pengunjung, { dataSources }) {
+        return pengunjungService.getPengunjungById(pengunjung.id);
+    }
+  },
   Query: {
-    getAllPengunjung: () => {
-      return pengunjungService.getAllPengunjung();
+    // Tambahkan async/await
+    getAllPengunjung: async () => {
+      return await pengunjungService.getAllPengunjung();
     },
-    getPengunjungById: (_, { id }) => {
-      return pengunjungService.getPengunjungById(id);
+    // Tambahkan async/await
+    getPengunjungById: async (_, { id }) => {
+      return await pengunjungService.getPengunjungById(id);
     }
   },
   Mutation: {
-    createPengunjung: (_, { nama, email, telepon }) => {
-      return pengunjungService.createPengunjung({
+    // Tambahkan async/await
+    createPengunjung: async (_, { nama, email, telepon }) => {
+      return await pengunjungService.createPengunjung({
         nama,
         email,
         telepon
       });
     },
-    updatePengunjung: (_, { id, ...pengunjung }) => {
-      const updatedPengunjung = pengunjungService.updatePengunjung(id, pengunjung);
+    // Tambahkan async/await
+    updatePengunjung: async (_, { id, ...pengunjung }) => {
+      const updatedPengunjung = await pengunjungService.updatePengunjung(id, pengunjung);
       if (!updatedPengunjung) {
         throw new Error('Pengunjung tidak ditemukan');
       }
       return updatedPengunjung;
     },
-    deletePengunjung: (_, { id }) => {
-      const deleted = pengunjungService.deletePengunjung(id);
+    // Tambahkan async/await
+    deletePengunjung: async (_, { id }) => {
+      const deleted = await pengunjungService.deletePengunjung(id);
       if (!deleted) {
         throw new Error('Pengunjung tidak ditemukan');
       }
@@ -34,4 +44,4 @@ const resolvers = {
   },
 };
 
-module.exports = resolvers; 
+module.exports = resolvers;
